@@ -74,16 +74,68 @@ const LOCAL_STORAGE_PASSES_KEY = 'claimmypass_user_passes_v1';
 const SESSION_STORAGE_HOLD_KEY = 'claimmypass_active_hold_v1';
 const HOLD_DURATION_SECONDS = 600; // 10 minutes
 
-interface StoredHoldSession {
+export interface StoredHoldSession {
   movieId: string;
   theatreId: string;
   showId: string;
   seatIds: string[];
-  expiresAt: number; // absolute unix timestamp in ms
+  holdStartedAt: number; // absolute unix timestamp in ms
+  expiresAt: number; // absolute unix timestamp in ms (10-minute deadline)
+  view?: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404';
+  concessionsCart?: Record<string, number>;
+  selectedDate?: string;
+}
+
+function loadInitialHold(): {
+  holdSession: StoredHoldSession | null;
+  movie: Movie | null;
+  theatre: Theatre | null;
+  show: Show | null;
+  secondsLeft: number;
+} {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return { holdSession: null, movie: null, theatre: null, show: null, secondsLeft: 0 };
+    }
+    const raw = sessionStorage.getItem(SESSION_STORAGE_HOLD_KEY);
+    if (!raw) {
+      return { holdSession: null, movie: null, theatre: null, show: null, secondsLeft: 0 };
+    }
+    const parsed: StoredHoldSession = JSON.parse(raw);
+    const now = Date.now();
+    const remainingMs = parsed.expiresAt - now;
+
+    if (remainingMs > 0 && Array.isArray(parsed.seatIds) && parsed.seatIds.length > 0) {
+      const movie = MOVIES.find((m) => m.id === parsed.movieId) || MOVIES[0];
+      const theatre = THEATRES.find((t) => t.id === parsed.theatreId) || THEATRES[0];
+      const date = parsed.selectedDate || new Date().toISOString().split('T')[0];
+      const shows = getShowsForMovieAndTheatre(movie.id, theatre.id, date);
+      const show = shows.find((s) => s.id === parsed.showId) || shows[0];
+      const secondsLeft = Math.max(0, Math.floor(remainingMs / 1000));
+
+      return {
+        holdSession: parsed,
+        movie,
+        theatre,
+        show,
+        secondsLeft,
+      };
+    } else {
+      // Clean up expired hold
+      sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+    }
+  } catch {
+    // Graceful fallback for parse or storage restrictions
+  }
+  return { holdSession: null, movie: null, theatre: null, show: null, secondsLeft: 0 };
 }
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentView, setCurrentView] = useState<'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404'>('browse');
+  const initialHold = React.useMemo(() => loadInitialHold(), []);
+
+  const [currentView, setCurrentView] = useState<'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404'>(
+    initialHold.holdSession?.view || (initialHold.holdSession ? 'seats' : 'browse')
+  );
   const [selectedCity, setSelectedCity] = useState(CITIES[0]);
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
 
@@ -100,23 +152,36 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const dismissToast = () => setToast(null);
 
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(initialHold.movie);
   const [isMovieDetailOpen, setIsMovieDetailOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedTheatre, setSelectedTheatre] = useState<Theatre | null>(null);
-  const [selectedShow, setSelectedShow] = useState<Show | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    initialHold.holdSession?.selectedDate || new Date().toISOString().split('T')[0]
+  );
+  const [selectedTheatre, setSelectedTheatre] = useState<Theatre | null>(initialHold.theatre);
+  const [selectedShow, setSelectedShow] = useState<Show | null>(initialHold.show);
 
-  const [currentSeats, setCurrentSeats] = useState<Seat[]>([]);
-  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
-  const [holdExpiryTimestamp, setHoldExpiryTimestamp] = useState<number | null>(null);
-  const [holdSecondsLeft, setHoldSecondsLeft] = useState<number>(0);
-  const [isHoldActive, setIsHoldActive] = useState<boolean>(false);
+  const [currentSeats, setCurrentSeats] = useState<Seat[]>(() => {
+    if (initialHold.show) {
+      return generateShowSeating(initialHold.show.id, initialHold.show.pricing);
+    }
+    return [];
+  });
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(initialHold.holdSession?.seatIds || []);
+  const [holdExpiryTimestamp, setHoldExpiryTimestamp] = useState<number | null>(
+    initialHold.holdSession?.expiresAt || null
+  );
+  const [holdSecondsLeft, setHoldSecondsLeft] = useState<number>(initialHold.secondsLeft);
+  const [isHoldActive, setIsHoldActive] = useState<boolean>(
+    Boolean(initialHold.holdSession && initialHold.secondsLeft > 0)
+  );
 
-  const [concessionsCart, setConcessionsCart] = useState<Record<string, number>>({});
+  const [concessionsCart, setConcessionsCart] = useState<Record<string, number>>(
+    initialHold.holdSession?.concessionsCart || {}
+  );
   const [activePass, setActivePass] = useState<BookingPass | null>(null);
   const [myPasses, setMyPasses] = useState<BookingPass[]>([]);
 
-  // Initialize stored passes and restore active hold session across page reloads
+  // Initialize stored passes
   useEffect(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_PASSES_KEY);
@@ -159,33 +224,57 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setMyPasses([defaultPass]);
         localStorage.setItem(LOCAL_STORAGE_PASSES_KEY, JSON.stringify([defaultPass]));
       }
-
-      // Restore active hold from sessionStorage if valid
-      const storedHold = sessionStorage.getItem(SESSION_STORAGE_HOLD_KEY);
-      if (storedHold) {
-        const parsed: StoredHoldSession = JSON.parse(storedHold);
-        const remainingMs = parsed.expiresAt - Date.now();
-        if (remainingMs > 0 && parsed.seatIds.length > 0) {
-          const movie = MOVIES.find((m) => m.id === parsed.movieId) || MOVIES[0];
-          const theatre = THEATRES.find((t) => t.id === parsed.theatreId) || THEATRES[0];
-          const shows = getShowsForMovieAndTheatre(movie.id, theatre.id, new Date().toISOString().split('T')[0]);
-          const show = shows.find((s) => s.id === parsed.showId) || shows[0];
-
-          setSelectedMovie(movie);
-          setSelectedTheatre(theatre);
-          setSelectedShow(show);
-          setSelectedSeatIds(parsed.seatIds);
-          setHoldExpiryTimestamp(parsed.expiresAt);
-          setHoldSecondsLeft(Math.floor(remainingMs / 1000));
-          setIsHoldActive(true);
-        } else {
-          sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
-        }
-      }
     } catch {
       // fallback
     }
   }, []);
+
+  // Helper to persist the active 10-minute hold session to sessionStorage
+  const persistHoldToSession = (
+    seatIdsToStore: string[],
+    expiryMs: number,
+    viewOverride?: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404',
+    cartOverride?: Record<string, number>,
+    movieOverride?: Movie | null,
+    theatreOverride?: Theatre | null,
+    showOverride?: Show | null
+  ) => {
+    try {
+      if (typeof window === 'undefined' || !window.sessionStorage) return;
+
+      if (!seatIdsToStore || seatIdsToStore.length === 0) {
+        sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+        return;
+      }
+
+      const activeMovie = movieOverride !== undefined ? movieOverride : selectedMovie;
+      const activeTheatre = theatreOverride !== undefined ? theatreOverride : selectedTheatre;
+      const activeShow = showOverride !== undefined ? showOverride : selectedShow;
+
+      const payload: StoredHoldSession = {
+        movieId: activeMovie?.id || '',
+        theatreId: activeTheatre?.id || '',
+        showId: activeShow?.id || '',
+        seatIds: seatIdsToStore,
+        holdStartedAt: expiryMs - HOLD_DURATION_SECONDS * 1000,
+        expiresAt: expiryMs,
+        view: viewOverride || currentView,
+        concessionsCart: cartOverride || concessionsCart,
+        selectedDate,
+      };
+
+      sessionStorage.setItem(SESSION_STORAGE_HOLD_KEY, JSON.stringify(payload));
+    } catch {
+      // Safely ignore storage quotas or restrictions
+    }
+  };
+
+  const handleSetCurrentView = (view: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404') => {
+    setCurrentView(view);
+    if (isHoldActive && holdExpiryTimestamp && selectedSeatIds.length > 0) {
+      persistHoldToSession(selectedSeatIds, holdExpiryTimestamp, view);
+    }
+  };
 
   // Save passes to localStorage whenever changed
   const savePasses = (passes: BookingPass[]) => {
@@ -205,12 +294,13 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [selectedShow]);
 
-  // Real-time timestamp-based hold countdown timer
+  // Real-time timestamp-based hold countdown timer with tab-focus / reload resilience
   useEffect(() => {
     if (!isHoldActive || !holdExpiryTimestamp) return;
 
     const tick = () => {
-      const remainingMs = holdExpiryTimestamp - Date.now();
+      const now = Date.now();
+      const remainingMs = holdExpiryTimestamp - now;
       const seconds = Math.max(0, Math.floor(remainingMs / 1000));
       setHoldSecondsLeft(seconds);
 
@@ -219,7 +309,11 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsHoldActive(false);
         setHoldExpiryTimestamp(null);
         setSelectedSeatIds([]);
-        sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+        try {
+          sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+        } catch {
+          // ignore
+        }
         if (selectedShow) {
           setCurrentSeats(generateShowSeating(selectedShow.id, selectedShow.pricing));
         }
@@ -229,7 +323,19 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     tick();
     const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      tick();
+    };
+
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
+    };
   }, [isHoldActive, holdExpiryTimestamp, selectedShow]);
 
   // Toggle seat selection with automatic session storage sync
@@ -245,20 +351,15 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsHoldActive(false);
         setHoldExpiryTimestamp(null);
         setHoldSecondsLeft(0);
-        sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+        try {
+          sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+        } catch {
+          // ignore
+        }
       } else {
         // Keep existing expiry timestamp for remainder of hold
         const expiry = holdExpiryTimestamp || Date.now() + HOLD_DURATION_SECONDS * 1000;
-        sessionStorage.setItem(
-          SESSION_STORAGE_HOLD_KEY,
-          JSON.stringify({
-            movieId: selectedMovie?.id,
-            theatreId: selectedTheatre?.id,
-            showId: selectedShow?.id,
-            seatIds: updated,
-            expiresAt: expiry,
-          })
-        );
+        persistHoldToSession(updated, expiry);
       }
     } else {
       if (selectedSeatIds.length >= 8) {
@@ -269,24 +370,17 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setSelectedSeatIds(updated);
       showToast(`Seat ${seat.id} (${seat.tier.toUpperCase()}) locked for 10 minutes`, 'success');
 
-      const expiry = isHoldActive && holdExpiryTimestamp
+      const now = Date.now();
+      // Maintain uninterrupted hold expiry if hold is already active, or establish 10-minute hold timestamp
+      const expiry = isHoldActive && holdExpiryTimestamp && holdExpiryTimestamp > now
         ? holdExpiryTimestamp
-        : Date.now() + HOLD_DURATION_SECONDS * 1000;
+        : now + HOLD_DURATION_SECONDS * 1000;
 
       setIsHoldActive(true);
       setHoldExpiryTimestamp(expiry);
-      setHoldSecondsLeft(Math.max(0, Math.floor((expiry - Date.now()) / 1000)));
+      setHoldSecondsLeft(Math.max(0, Math.floor((expiry - now) / 1000)));
 
-      sessionStorage.setItem(
-        SESSION_STORAGE_HOLD_KEY,
-        JSON.stringify({
-          movieId: selectedMovie?.id,
-          theatreId: selectedTheatre?.id,
-          showId: selectedShow?.id,
-          seatIds: updated,
-          expiresAt: expiry,
-        })
-      );
+      persistHoldToSession(updated, expiry);
     }
   };
 
@@ -295,7 +389,11 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsHoldActive(false);
     setHoldExpiryTimestamp(null);
     setHoldSecondsLeft(0);
-    sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+    } catch {
+      // ignore
+    }
   };
 
   // Concessions
@@ -303,16 +401,25 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setConcessionsCart((prev) => {
       const current = prev[itemId] || 0;
       const next = Math.max(0, current + delta);
+      const copy = { ...prev };
       if (next === 0) {
-        const copy = { ...prev };
         delete copy[itemId];
-        return copy;
+      } else {
+        copy[itemId] = next;
       }
-      return { ...prev, [itemId]: next };
+      if (isHoldActive && holdExpiryTimestamp && selectedSeatIds.length > 0) {
+        persistHoldToSession(selectedSeatIds, holdExpiryTimestamp, undefined, copy);
+      }
+      return copy;
     });
   };
 
-  const clearConcessions = () => setConcessionsCart({});
+  const clearConcessions = () => {
+    setConcessionsCart({});
+    if (isHoldActive && holdExpiryTimestamp && selectedSeatIds.length > 0) {
+      persistHoldToSession(selectedSeatIds, holdExpiryTimestamp, undefined, {});
+    }
+  };
 
   // Cost calculations
   const selectedSeats = currentSeats.filter((s) => selectedSeatIds.includes(s.id));
@@ -337,23 +444,27 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const chosenShow = show || availableShows[0];
     setSelectedShow(chosenShow);
 
+    if (selectedShow && chosenShow && selectedShow.id !== chosenShow.id && isHoldActive) {
+      releaseHold();
+    }
+
     setIsMovieDetailOpen(false);
-    setCurrentView('seats');
+    handleSetCurrentView('seats');
   };
 
   const proceedToConcessions = () => {
     if (selectedSeatIds.length === 0) return;
-    setCurrentView('concessions');
+    handleSetCurrentView('concessions');
   };
 
   const proceedToPayment = () => {
-    setCurrentView('payment');
+    handleSetCurrentView('payment');
   };
 
   const returnToBrowse = () => {
     releaseHold();
     clearConcessions();
-    setCurrentView('browse');
+    handleSetCurrentView('browse');
   };
 
   const completeBooking = (customer: { name: string; phone: string; email: string; paymentMethod: string }) => {
@@ -414,7 +525,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <BookingContext.Provider
       value={{
         currentView,
-        setCurrentView,
+        setCurrentView: handleSetCurrentView,
         selectedCity,
         setSelectedCity,
         isCityModalOpen,
@@ -469,3 +580,5 @@ export const useBooking = () => {
   }
   return context;
 };
+
+export const useBookingStore = useBooking;
