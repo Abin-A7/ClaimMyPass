@@ -111,6 +111,10 @@ Present this digital pass or QR at cinema entry.
                 src={pass.movie.posterUrl}
                 alt={pass.movie.title}
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+                width="120"
+                height="160"
                 className="w-full h-full object-cover"
               />
             </div>

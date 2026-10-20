@@ -77,17 +77,10 @@ export const SocialPreviewModal: React.FC<SocialPreviewModalProps> = ({
     }
   };
 
-  const handleWhatsAppShare = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullInviteMessage)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleTwitterShare = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      `Just claimed passes for ${pass.movie.title} in ${pass.show.format} via ClaimMyPass! 🎬\n${shareUrl}`
-    )}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
+  const whatsAppShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullInviteMessage)}`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    `Just claimed passes for ${pass.movie.title} in ${pass.show.format} via ClaimMyPass! 🎬\n${shareUrl}`
+  )}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -132,6 +125,10 @@ export const SocialPreviewModal: React.FC<SocialPreviewModalProps> = ({
                 src={pass.movie.backdropUrl || pass.movie.posterUrl}
                 alt={pass.movie.title}
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+                width="460"
+                height="112"
                 className="w-full h-full object-cover brightness-60"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#101511] via-transparent to-transparent" />
@@ -150,6 +147,10 @@ export const SocialPreviewModal: React.FC<SocialPreviewModalProps> = ({
                   src={pass.movie.posterUrl}
                   alt={pass.movie.title}
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                  width="56"
+                  height="75"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -223,21 +224,25 @@ export const SocialPreviewModal: React.FC<SocialPreviewModalProps> = ({
             Direct Share Options
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            <button
-              onClick={handleWhatsAppShare}
+            <a
+              href={whatsAppShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-[#101511] border border-[#7FA35C]/30 hover:border-[#648E37] text-xs font-semibold text-zinc-200 hover:text-white transition-colors"
             >
               <MessageCircle className="w-4 h-4 text-[#648E37]" />
               <span>WhatsApp</span>
-            </button>
+            </a>
 
-            <button
-              onClick={handleTwitterShare}
+            <a
+              href={twitterShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-[#101511] border border-[#7FA35C]/30 hover:border-[#FFD900] text-xs font-semibold text-zinc-200 hover:text-white transition-colors"
             >
               <span className="font-bold text-[#FFD900]">𝕏</span>
               <span>Twitter / X</span>
-            </button>
+            </a>
 
             <button
               onClick={handleCopyInvite}

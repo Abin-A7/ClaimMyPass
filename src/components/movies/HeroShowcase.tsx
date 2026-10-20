@@ -15,6 +15,10 @@ export const HeroShowcase: React.FC = () => {
           src={featured.backdropUrl}
           alt={featured.title}
           referrerPolicy="no-referrer"
+          loading="eager"
+          decoding="async"
+          width="1920"
+          height="1080"
           className="w-full h-full object-cover object-center brightness-60"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#101511] via-[#101511]/70 to-[#080E09]/60" />
@@ -108,6 +112,10 @@ export const HeroShowcase: React.FC = () => {
                   src={featured.posterUrl}
                   alt={featured.title}
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                  width="256"
+                  height="341"
                   className="w-full h-full object-cover"
                 />
               </div>

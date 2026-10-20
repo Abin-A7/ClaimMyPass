@@ -2,14 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Movie, Theatre, Show, Seat, ConcessionItem, BookingPass } from '../types';
 import { CITIES, MOVIES, THEATRES, CONCESSIONS, getShowsForMovieAndTheatre, generateShowSeating } from '../data/mockData';
 
+interface ToastState {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 interface BookingContextType {
   // Navigation & modals
-  currentView: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes';
-  setCurrentView: (view: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes') => void;
+  currentView: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404';
+  setCurrentView: (view: 'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404') => void;
   selectedCity: (typeof CITIES)[0];
   setSelectedCity: (city: (typeof CITIES)[0]) => void;
   isCityModalOpen: boolean;
   setIsCityModalOpen: (open: boolean) => void;
+
+  // Toast notifications
+  toast: ToastState | null;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  dismissToast: () => void;
 
   // Selected entities
   selectedMovie: Movie | null;
@@ -72,9 +83,22 @@ interface StoredHoldSession {
 }
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentView, setCurrentView] = useState<'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes'>('browse');
+  const [currentView, setCurrentView] = useState<'browse' | 'seats' | 'concessions' | 'payment' | 'ticket-pass' | 'my-passes' | '404'>('browse');
   const [selectedCity, setSelectedCity] = useState(CITIES[0]);
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Date.now();
+    setToast({ id, message, type });
+    setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current));
+    }, 3500);
+  };
+
+  const dismissToast = () => setToast(null);
 
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [isMovieDetailOpen, setIsMovieDetailOpen] = useState(false);
@@ -199,6 +223,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (selectedShow) {
           setCurrentSeats(generateShowSeating(selectedShow.id, selectedShow.pricing));
         }
+        showToast('Your 10-minute seat lock expired. Seats returned to inventory.', 'error');
       }
     };
 
@@ -214,6 +239,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (selectedSeatIds.includes(seat.id)) {
       const updated = selectedSeatIds.filter((id) => id !== seat.id);
       setSelectedSeatIds(updated);
+      showToast(`Seat ${seat.id} released`, 'info');
+
       if (updated.length === 0) {
         setIsHoldActive(false);
         setHoldExpiryTimestamp(null);
@@ -235,11 +262,12 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } else {
       if (selectedSeatIds.length >= 8) {
-        alert('Maximum of 8 seats per booking session allowed under fair-usage inventory locks.');
+        showToast('Fair-usage policy: Maximum 8 seats per booking session.', 'error');
         return;
       }
       const updated = [...selectedSeatIds, seat.id];
       setSelectedSeatIds(updated);
+      showToast(`Seat ${seat.id} (${seat.tier.toUpperCase()}) locked for 10 minutes`, 'success');
 
       const expiry = isHoldActive && holdExpiryTimestamp
         ? holdExpiryTimestamp
@@ -368,6 +396,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedSeatIds([]);
     clearConcessions();
     sessionStorage.removeItem(SESSION_STORAGE_HOLD_KEY);
+    showToast(`Pass confirmed for ${pass.movie.title}! Tickets issued.`, 'success');
     setCurrentView('ticket-pass');
     return pass;
   };
@@ -378,6 +407,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (activePass?.bookingId === bookingId) {
       setActivePass(null);
     }
+    showToast(`Booking ${bookingId} cancelled. 100% refund initiated to source.`, 'info');
   };
 
   return (
@@ -389,6 +419,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSelectedCity,
         isCityModalOpen,
         setIsCityModalOpen,
+        toast,
+        showToast,
+        dismissToast,
         selectedMovie,
         setSelectedMovie,
         isMovieDetailOpen,

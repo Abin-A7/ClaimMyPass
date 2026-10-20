@@ -79,6 +79,10 @@ export const TheatresList: React.FC = () => {
                           src={movie.posterUrl}
                           alt={movie.title}
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
+                          width="40"
+                          height="56"
                           className="w-full h-full object-cover"
                         />
                       </div>

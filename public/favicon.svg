@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#101511" />
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#648E37" stroke-width="2" stroke-opacity="0.4" />
+  
+  <!-- Ticket Pass Base -->
+  <path d="M14 20C14 17.79 15.79 16 18 16H46C48.21 16 50 17.79 50 20V28C47.79 28 46 29.79 46 32C46 34.21 47.79 36 50 36V44C50 46.21 48.21 48 46 48H18C15.79 48 14 46.21 14 44V36C16.21 36 18 34.21 18 32C18 29.79 16.21 28 14 28V20Z" fill="#080E09" stroke="#FFD900" stroke-width="2.5" />
+  
+  <!-- Perforated Line -->
+  <line x1="38" y1="18" x2="38" y2="46" stroke="#7FA35C" stroke-width="2" stroke-dasharray="3 3" />
+  
+  <!-- Brand Monogram 'C' in Hot Yellow -->
+  <path d="M29 27C27.5 25.5 24 25.5 22.5 27C21 28.5 21 35.5 22.5 37C24 38.5 27.5 38.5 29 37" fill="none" stroke="#FFD900" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Verified Green Dot -->
+  <circle cx="43" cy="32" r="3" fill="#648E37" />
+</svg>

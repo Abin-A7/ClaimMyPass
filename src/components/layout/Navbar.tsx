@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useBooking } from '../../context/BookingContext';
-import { MapPin, Ticket, ChevronDown } from 'lucide-react';
+import { MapPin, Ticket, ChevronDown, Menu, X, Film, ShieldCheck } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onOpenLegalTab?: (tab: 'privacy' | 'terms' | 'refund' | 'support') => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenLegalTab }) => {
   const {
     currentView,
     setCurrentView,
@@ -12,23 +16,43 @@ export const Navbar: React.FC = () => {
     returnToBrowse,
   } = useBooking();
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogoClick = () => {
+    returnToBrowse();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleNavClick = (view: 'browse' | 'my-passes', targetElementId?: string) => {
+    setCurrentView(view);
+    setIsMobileMenuOpen(false);
+    if (targetElementId) {
+      setTimeout(() => {
+        const el = document.getElementById(targetElementId);
+        el?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full bg-[#080E09]/95 backdrop-blur-md border-b border-[#7FA35C]/20 transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
-        {/* Zone 1: Single text element wordmark */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-8">
+        {/* Zone 1: Single text element wordmark (Clickable to home) */}
         <button
-          onClick={returnToBrowse}
-          className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FFD900] hover:text-[#FFFC72] transition-colors whitespace-nowrap shrink-0 flex items-center gap-2"
+          onClick={handleLogoClick}
+          className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FFD900] hover:text-[#FFFC72] transition-colors whitespace-nowrap shrink-0 flex items-center gap-2 cursor-pointer"
+          aria-label="ClaimMyPass Home"
         >
           <span>ClaimMyPass</span>
           <span className="w-1.5 h-1.5 rounded-full bg-[#648E37]" />
         </button>
 
-        {/* Zone 2: 4–5 clean single-line text navigation links */}
+        {/* Zone 2: 4-5 clean single-line text navigation links */}
         <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-zinc-300">
           <button
-            onClick={() => setCurrentView('browse')}
-            className={`transition-colors whitespace-nowrap shrink-0 ${
+            onClick={() => handleNavClick('browse')}
+            className={`transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               currentView === 'browse'
                 ? 'text-[#FFD900] font-semibold border-b-2 border-[#FFD900] pb-0.5'
                 : 'hover:text-white'
@@ -37,19 +61,14 @@ export const Navbar: React.FC = () => {
             Movies
           </button>
           <button
-            onClick={() => {
-              setCurrentView('browse');
-              // scroll to theatres
-              const el = document.getElementById('theatres-section');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="hover:text-white transition-colors whitespace-nowrap shrink-0"
+            onClick={() => handleNavClick('browse', 'theatres-section')}
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Theatres
           </button>
           <button
-            onClick={() => setCurrentView('my-passes')}
-            className={`transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            onClick={() => handleNavClick('my-passes')}
+            className={`transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer ${
               currentView === 'my-passes'
                 ? 'text-[#FFD900] font-semibold border-b-2 border-[#FFD900] pb-0.5'
                 : 'hover:text-white'
@@ -69,29 +88,100 @@ export const Navbar: React.FC = () => {
           </span>
         </nav>
 
-        {/* Zone 3: 1 primary action */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Zone 3: 1 primary action & Mobile Menu toggle */}
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             onClick={() => setIsCityModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-[#101511] text-[#FFFC72] border border-[#7FA35C]/40 hover:border-[#FFD900] transition-colors whitespace-nowrap shrink-0"
-            aria-label="Change City"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-[#101511] text-[#FFFC72] border border-[#7FA35C]/40 hover:border-[#FFD900] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            aria-label={`Change metropolitan city, currently ${selectedCity.name}`}
           >
             <MapPin className="w-3.5 h-3.5 text-[#648E37]" />
             <span>{selectedCity.name}</span>
             <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
-          {currentView !== 'my-passes' && (
-            <button
-              onClick={() => setCurrentView('my-passes')}
-              className="md:hidden p-2 rounded-md bg-[#101511] text-[#FFD900] border border-[#7FA35C]/30"
-              aria-label="View My Passes"
-            >
-              <Ticket className="w-4 h-4" />
-            </button>
-          )}
+          {/* Mobile Hamburger Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            className="md:hidden p-2 rounded-md bg-[#101511] text-zinc-200 border border-[#7FA35C]/30 hover:border-[#FFD900] transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMobileMenuOpen}
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5 text-[#FFD900]" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-[#080E09] border-b border-[#7FA35C]/30 px-4 py-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
+          <div className="flex flex-col space-y-2 text-sm font-medium">
+            <button
+              onClick={() => handleNavClick('browse')}
+              className={`flex items-center justify-between p-2.5 rounded-lg text-left transition-colors cursor-pointer ${
+                currentView === 'browse'
+                  ? 'bg-[#101511] text-[#FFD900] font-bold border border-[#FFD900]/40'
+                  : 'text-zinc-300 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Film className="w-4 h-4 text-[#648E37]" />
+                <span>Now Showing Movies</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleNavClick('browse', 'theatres-section')}
+              className="flex items-center gap-2.5 p-2.5 rounded-lg text-left text-zinc-300 hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <MapPin className="w-4 h-4 text-[#648E37]" />
+              <span>Cinemas & Theatres in {selectedCity.name}</span>
+            </button>
+
+            <button
+              onClick={() => handleNavClick('my-passes')}
+              className={`flex items-center justify-between p-2.5 rounded-lg text-left transition-colors cursor-pointer ${
+                currentView === 'my-passes'
+                  ? 'bg-[#101511] text-[#FFD900] font-bold border border-[#FFD900]/40'
+                  : 'text-zinc-300 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Ticket className="w-4 h-4 text-[#648E37]" />
+                <span>My Booked Passes</span>
+              </div>
+              {myPasses.length > 0 && (
+                <span className="text-xs font-bold text-[#080E09] bg-[#FFD900] px-2 py-0.5 rounded-full">
+                  {myPasses.length}
+                </span>
+              )}
+            </button>
+
+            {onOpenLegalTab && (
+              <div className="pt-2 border-t border-white/5 grid grid-cols-2 gap-2 text-xs text-zinc-400">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenLegalTab('support');
+                  }}
+                  className="p-2 rounded bg-[#101511] text-left hover:text-white cursor-pointer"
+                >
+                  Contact Support
+                </button>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenLegalTab('refund');
+                  }}
+                  className="p-2 rounded bg-[#101511] text-left hover:text-white cursor-pointer"
+                >
+                  Refund Policy
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 };

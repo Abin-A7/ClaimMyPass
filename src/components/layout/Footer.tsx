@@ -1,7 +1,12 @@
 import React from 'react';
-import { ShieldCheck, Film, Clock, Award } from 'lucide-react';
+import { ShieldCheck, Film, Clock, Award, Phone, Mail } from 'lucide-react';
+import { LegalTab } from '../legal/LegalModal';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenLegalTab: (tab: LegalTab) => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenLegalTab }) => {
   return (
     <footer className="w-full bg-[#080E09] border-t border-[#7FA35C]/20 text-zinc-400 mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -12,7 +17,7 @@ export const Footer: React.FC = () => {
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-semibold text-zinc-200">10-Min Atomic Hold</p>
+              <p className="font-semibold text-zinc-200">10-Min Real-Time Hold</p>
               <p className="text-xs text-zinc-400 mt-1">
                 Zero double-booking guarantee backed by distributed lock coordinator.
               </p>
@@ -36,7 +41,7 @@ export const Footer: React.FC = () => {
               <Film className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-semibold text-zinc-200">Premium Formats</p>
+              <p className="font-semibold text-zinc-200">Certified Formats</p>
               <p className="text-xs text-zinc-400 mt-1">
                 Curated IMAX with Laser, Dolby Cinema 4K, 4DX, and VIP Recliners.
               </p>
@@ -56,19 +61,76 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+        {/* Contact Concierge Bar */}
+        <div className="py-6 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-6">
+            <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[11px]">Direct Support:</span>
+            <a
+              href="tel:+918045681200"
+              className="flex items-center gap-1.5 text-zinc-300 hover:text-[#FFD900] transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5 text-[#648E37]" />
+              <span>+91 80 4568 1200</span>
+            </a>
+            <a
+              href="mailto:support@claimmypass.com"
+              className="flex items-center gap-1.5 text-zinc-300 hover:text-[#FFFC72] transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5 text-[#648E37]" />
+              <span>support@claimmypass.com</span>
+            </a>
+          </div>
+
+          <div className="text-[11px] text-zinc-500">
+            Assistance available daily: 8:00 AM - 12:00 AM Midnight
+          </div>
+        </div>
+
+        {/* Bottom Bar with Functional Legal Links */}
+        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#FFD900]">ClaimMyPass</span>
             <span className="text-zinc-600">·</span>
-            <span>&copy; {new Date().getFullYear()} ClaimMyPass Ticketing Technologies. All rights reserved.</span>
+            <span>&copy; 2026 ClaimMyPass Ticketing Technologies. All rights reserved.</span>
           </div>
 
-          <div className="flex items-center gap-6 text-zinc-400">
-            <span className="hover:text-zinc-200 cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-zinc-200 cursor-pointer transition-colors">Terms of Admission</span>
-            <span className="hover:text-zinc-200 cursor-pointer transition-colors">Multiplex Partners</span>
-            <span className="hover:text-zinc-200 cursor-pointer transition-colors">Support</span>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-zinc-400">
+            <button
+              onClick={() => onOpenLegalTab('privacy')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Privacy Policy
+            </button>
+            <button
+              onClick={() => onOpenLegalTab('terms')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Terms of Admission
+            </button>
+            <button
+              onClick={() => onOpenLegalTab('refund')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Refund Policy
+            </button>
+            <button
+              onClick={() => onOpenLegalTab('cookies')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Cookie Policy
+            </button>
+            <button
+              onClick={() => onOpenLegalTab('partners')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Multiplex Partners
+            </button>
+            <button
+              onClick={() => onOpenLegalTab('support')}
+              className="hover:text-zinc-100 cursor-pointer transition-colors"
+            >
+              Support
+            </button>
           </div>
         </div>
       </div>

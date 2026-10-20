@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useBooking } from '../../context/BookingContext';
 import { SeatLegend } from './SeatLegend';
 import { Seat, SeatTier } from '../../types';
@@ -38,6 +39,7 @@ export const SeatGrid: React.FC = () => {
     { tier: 'premium', label: 'Prime Panoramic Deck', rows: ['H', 'G', 'F', 'E'], price: selectedShow.pricing.premium },
     { tier: 'standard', label: 'Classic Deck', rows: ['D', 'C', 'B', 'A'], price: selectedShow.pricing.standard },
   ];
+  const allRows = tiers.flatMap((t) => t.rows);
 
   // Helper for styling each seat button
   const getSeatClass = (seat: Seat, isSelected: boolean) => {
@@ -67,14 +69,14 @@ export const SeatGrid: React.FC = () => {
   const selectedSeats = currentSeats.filter((s) => selectedSeatIds.includes(s.id));
 
   return (
-    <div className="w-full min-h-screen bg-[#101511] pb-32">
+    <div className="w-full min-h-screen bg-[#101511] pb-32 overflow-x-hidden">
       {/* Top Showtime Info Header */}
       <div className="w-full bg-[#080E09] border-b border-[#7FA35C]/20 px-4 py-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={returnToBrowse}
-              className="p-2 rounded-lg bg-[#101511] text-zinc-300 hover:text-white border border-[#7FA35C]/30 hover:border-[#FFD900] transition-colors"
+              className="p-2 rounded-lg bg-[#101511] text-zinc-300 hover:text-white border border-[#7FA35C]/30 hover:border-[#FFD900] transition-colors cursor-pointer"
               aria-label="Back to movie list"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -110,7 +112,7 @@ export const SeatGrid: React.FC = () => {
       {/* Auditorium Container */}
       <div className="max-w-5xl mx-auto px-4 pt-8">
         {/* Curved Cinema Screen */}
-        <div className="relative mb-12 flex flex-col items-center">
+        <div className="relative mb-10 flex flex-col items-center">
           {/* Curved glowing screen bar */}
           <div className="w-full max-w-2xl h-3 rounded-[50%] bg-gradient-to-b from-[#FFFC72]/50 to-transparent shadow-[0_-10px_25px_rgba(255,252,114,0.3)] mb-3" />
           <div className="text-[11px] font-mono tracking-widest text-[#FFFC72]/70 uppercase">
@@ -119,12 +121,17 @@ export const SeatGrid: React.FC = () => {
         </div>
 
         {/* Legend */}
-        <div className="mb-8">
+        <div className="mb-6">
           <SeatLegend />
         </div>
 
+        {/* Mobile Horizontal Scroll Guide */}
+        <div className="md:hidden text-center pb-2 text-[11px] text-zinc-500 font-mono">
+          &larr; Drag seating deck horizontally to view all rows &rarr;
+        </div>
+
         {/* Seating Grid by Tiers */}
-        <div className="space-y-8 bg-[#080E09]/60 border border-[#7FA35C]/15 rounded-2xl p-4 sm:p-8 backdrop-blur-sm overflow-x-auto">
+        <div className="space-y-8 bg-[#080E09]/60 border border-[#7FA35C]/15 rounded-2xl p-4 sm:p-8 backdrop-blur-sm overflow-x-auto overscroll-x-contain">
           {tiers.map((tierGroup) => (
             <div key={tierGroup.tier} className="space-y-3 min-w-[620px]">
               {/* Tier Header */}
@@ -145,9 +152,20 @@ export const SeatGrid: React.FC = () => {
                   const half = Math.ceil(rowSeats.length / 2);
                   const leftBlock = rowSeats.slice(0, half);
                   const rightBlock = rowSeats.slice(half);
+                  const rowOverallIndex = allRows.indexOf(rowLetter);
 
                   return (
-                    <div key={rowLetter} className="flex items-center justify-center gap-2 sm:gap-4">
+                    <motion.div
+                      key={rowLetter}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.35,
+                        delay: Math.max(0, rowOverallIndex) * 0.04,
+                        ease: [0.25, 0.1, 0.25, 1],
+                      }}
+                      className="flex items-center justify-center gap-2 sm:gap-4"
+                    >
                       {/* Row Label Left */}
                       <span className="w-5 text-center text-xs font-mono font-bold text-zinc-500">
                         {rowLetter}
@@ -200,7 +218,7 @@ export const SeatGrid: React.FC = () => {
                       <span className="w-5 text-center text-xs font-mono font-bold text-zinc-500">
                         {rowLetter}
                       </span>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

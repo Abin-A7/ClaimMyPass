@@ -40,6 +40,10 @@ export const MovieDetailModal: React.FC = () => {
                 src={selectedMovie.posterUrl}
                 alt={selectedMovie.title}
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+                width="320"
+                height="426"
                 className="w-full h-full object-cover"
               />
             </div>

@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState } from 'react';
 import { BookingProvider, useBooking } from './context/BookingContext';
 import { Navbar } from './components/layout/Navbar';
@@ -19,13 +14,18 @@ import { PaymentModal } from './components/checkout/PaymentModal';
 import { DigitalPassModal } from './components/tickets/DigitalPassModal';
 import { MyPassesView } from './components/passes/MyPassesView';
 import { CityModal } from './components/city/CityModal';
+import { LegalModal, LegalTab } from './components/legal/LegalModal';
+import { CookieConsentBanner } from './components/legal/CookieConsentBanner';
+import { Custom404View } from './components/common/Custom404View';
+import { ToastContainer } from './components/common/ToastContainer';
 import { MOVIES } from './data/mockData';
-import { Film, Sparkles } from 'lucide-react';
+import { Film } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentView, selectedDate, setSelectedDate } = useBooking();
+  const { currentView, selectedDate, setSelectedDate, setCurrentView } = useBooking();
   const [selectedGenre, setSelectedGenre] = useState('');
   const [selectedFormat, setSelectedFormat] = useState('');
+  const [activeLegalTab, setActiveLegalTab] = useState<LegalTab | null>(null);
 
   // Filter movies based on user selections
   const filteredMovies = MOVIES.filter((movie) => {
@@ -35,14 +35,17 @@ const MainContent: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#101511] text-zinc-100 selection:bg-[#FFD900] selection:text-[#080E09]">
-      {/* 1. Header (Navbar strictly adhering to 3-Zone contract) */}
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-[#101511] text-zinc-100 selection:bg-[#FFD900] selection:text-[#080E09] overflow-x-hidden">
+      {/* 1. Header with mobile navigation and accessible brand click */}
+      <Navbar onOpenLegalTab={(tab) => setActiveLegalTab(tab)} />
 
-      {/* 2. Floating 10-Minute Hold Urgency Banner */}
+      {/* 2. Real-time Toast Notifications */}
+      <ToastContainer />
+
+      {/* 3. Floating 10-Minute Hold Urgency Banner */}
       <HoldCountdownBanner />
 
-      {/* 3. Dynamic Router / View Switcher */}
+      {/* 4. Dynamic Router / View Switcher */}
       <main className="flex-1">
         {currentView === 'browse' && (
           <div>
@@ -79,11 +82,26 @@ const MainContent: React.FC = () => {
               />
 
               {/* Movie Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredMovies.map((movie) => (
-                  <MovieCard key={movie.id} movie={movie} />
-                ))}
-              </div>
+              {filteredMovies.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {filteredMovies.map((movie) => (
+                    <MovieCard key={movie.id} movie={movie} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-[#080E09] border border-[#7FA35C]/20 rounded-xl p-8">
+                  <p className="text-sm text-zinc-300 font-semibold mb-2">No movies match the selected filters.</p>
+                  <button
+                    onClick={() => {
+                      setSelectedGenre('');
+                      setSelectedFormat('');
+                    }}
+                    className="px-4 py-2 rounded-lg text-xs font-bold bg-[#FFD900] text-[#080E09] cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
 
               {/* Theatres in City */}
               <TheatresList />
@@ -100,14 +118,26 @@ const MainContent: React.FC = () => {
         {currentView === 'ticket-pass' && <DigitalPassModal />}
 
         {currentView === 'my-passes' && <MyPassesView />}
+
+        {currentView === '404' && (
+          <Custom404View onBackToMovies={() => setCurrentView('browse')} />
+        )}
       </main>
 
-      {/* 4. Modals */}
+      {/* 5. Modals */}
       <CityModal />
       <MovieDetailModal />
+      <LegalModal
+        activeTab={activeLegalTab}
+        onClose={() => setActiveLegalTab(null)}
+        onSelectTab={(tab) => setActiveLegalTab(tab)}
+      />
 
-      {/* 5. Footer with Marshland Background */}
-      <Footer />
+      {/* 6. Cookie Consent Banner */}
+      <CookieConsentBanner onOpenCookiePolicy={() => setActiveLegalTab('cookies')} />
+
+      {/* 7. Footer with Marshland Background and Functional Legal Links */}
+      <Footer onOpenLegalTab={(tab) => setActiveLegalTab(tab)} />
     </div>
   );
 };

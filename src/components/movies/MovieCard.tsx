@@ -24,6 +24,10 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
           src={movie.posterUrl}
           alt={movie.title}
           referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
+          width="300"
+          height="400"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
 

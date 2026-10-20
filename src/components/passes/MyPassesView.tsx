@@ -76,6 +76,10 @@ export const MyPassesView: React.FC = () => {
                       src={pass.movie.posterUrl}
                       alt={pass.movie.title}
                       referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
+                      width="80"
+                      height="106"
                       className="w-full h-full object-cover"
                     />
                   </div>

@@ -38,11 +38,14 @@ export const PaymentModal: React.FC = () => {
   const [customerEmail, setCustomerEmail] = useState('abinanilkumarn@gmail.com');
 
   // Form states
+  // Form states
   const [upiId, setUpiId] = useState('abin@okaxis');
-  const [cardNumber, setCardNumber] = useState('4532 •••• •••• 8912');
+  const [cardNumber, setCardNumber] = useState('4532 8901 2345 8912');
   const [cardExpiry, setCardExpiry] = useState('08/29');
   const [cardCvv, setCardCvv] = useState('781');
   const [selectedBank, setSelectedBank] = useState('HDFC Bank');
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Processing state simulation
   const [processingStep, setProcessingStep] = useState<'idle' | 'authorizing' | 'locking' | 'confirmed'>('idle');
@@ -56,8 +59,26 @@ export const PaymentModal: React.FC = () => {
     .filter((c) => Boolean(c.item));
 
   const handlePayNow = () => {
-    if (!customerName || !customerPhone || !customerEmail) {
-      alert('Please provide complete contact details for ticket dispatch.');
+    setFormError(null);
+
+    if (!customerName.trim()) {
+      setFormError('Please enter attendee full name for admission verification.');
+      return;
+    }
+
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setFormError('Please enter a valid 10-digit mobile number for instant SMS pass dispatch.');
+      return;
+    }
+
+    if (!customerEmail.trim() || !customerEmail.includes('@') || !customerEmail.includes('.')) {
+      setFormError('Please enter a valid email address to receive your verified PDF digital pass.');
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setFormError('Please accept the Terms of Admission and Privacy Policy to claim your pass.');
       return;
     }
 
@@ -76,7 +97,7 @@ export const PaymentModal: React.FC = () => {
               paymentTab === 'upi'
                 ? `UPI (${upiId})`
                 : paymentTab === 'card'
-                ? `Credit Card (${cardNumber.slice(-4)})`
+                ? `Credit Card (ending ${cardNumber.slice(-4)})`
                 : `Netbanking (${selectedBank})`,
           });
         }, 800);
@@ -215,19 +236,49 @@ export const PaymentModal: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <span className="px-2 py-1 rounded bg-[#080E09] border border-white/10 text-[10px] font-mono text-[#FFFC72]">GPay</span>
-                      <span className="px-2 py-1 rounded bg-[#080E09] border border-white/10 text-[10px] font-mono text-[#FFFC72]">PhonePe</span>
-                      <span className="px-2 py-1 rounded bg-[#080E09] border border-white/10 text-[10px] font-mono text-[#FFFC72]">Paytm</span>
+                      <button
+                        type="button"
+                        onClick={() => setUpiId('abin@okaxis')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                          upiId.endsWith('@okaxis')
+                            ? 'bg-[#FFD900] text-[#080E09] font-bold'
+                            : 'bg-[#080E09] border border-white/10 text-[#FFFC72] hover:border-[#FFD900]'
+                        }`}
+                      >
+                        GPay
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUpiId('abin@ybl')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                          upiId.endsWith('@ybl')
+                            ? 'bg-[#FFD900] text-[#080E09] font-bold'
+                            : 'bg-[#080E09] border border-white/10 text-[#FFFC72] hover:border-[#FFD900]'
+                        }`}
+                      >
+                        PhonePe
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUpiId('abin@paytm')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                          upiId.endsWith('@paytm')
+                            ? 'bg-[#FFD900] text-[#080E09] font-bold'
+                            : 'bg-[#080E09] border border-white/10 text-[#FFFC72] hover:border-[#FFD900]'
+                        }`}
+                      >
+                        Paytm
+                      </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs text-zinc-400 block mb-1">Enter UPI ID</label>
+                    <label className="text-xs text-zinc-400 block mb-1">Enter UPI Virtual Address</label>
                     <input
                       type="text"
                       value={upiId}
                       onChange={(e) => setUpiId(e.target.value)}
-                      placeholder="username@okhdfcbank"
+                      placeholder="e.g. mobile@okaxis or handle@okhdfc"
                       className="w-full bg-[#101511] border border-[#7FA35C]/40 rounded-lg p-2.5 text-xs text-zinc-100 font-mono focus:outline-none focus:border-[#FFD900]"
                     />
                   </div>
@@ -353,8 +404,34 @@ export const PaymentModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Form Consent Checkbox */}
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => {
+                      setAgreedToTerms(e.target.checked);
+                      if (formError) setFormError(null);
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded border-[#7FA35C]/50 bg-[#101511] text-[#FFD900] accent-[#FFD900] cursor-pointer shrink-0"
+                  />
+                  <span className="text-[11px] leading-relaxed text-zinc-400">
+                    I agree to the <span className="text-[#FFFC72] underline font-medium">Terms of Admission</span> and <span className="text-[#FFFC72] underline font-medium">Privacy Policy</span>. I verify that attendees meet certified film ratings.
+                  </span>
+                </label>
+              </div>
+
+              {/* Error Alert Message */}
+              {formError && (
+                <div className="p-3 rounded-lg bg-red-950/70 border border-red-500/80 text-red-200 text-xs flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <span className="flex-1 font-medium">{formError}</span>
+                </div>
+              )}
+
               {/* Pay Button / Loading Status */}
-              <div className="pt-2">
+              <div className="pt-1">
                 {processingStep === 'idle' ? (
                   <button
                     onClick={handlePayNow}
